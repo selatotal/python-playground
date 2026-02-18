@@ -257,6 +257,84 @@ def compute_on_time_and_points(issues):
 
     return on_time_pct, points, issue_details
 
+# =========================
+# Google Calendar
+# =========================
+
+def get_google_calendar_service():
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    import os.path
+
+    SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+
+    creds = None
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
+
+    return build("calendar", "v3", credentials=creds)
+
+
+def get_meeting_hours_not_organized_by(start, end):
+    service = get_google_calendar_service()
+
+    whitelist_raw = os.environ.get("ORGANIZER_WHITELIST", "")
+    whitelist = {e.strip().lower() for e in whitelist_raw.split(",") if e.strip()}
+
+    events_result = service.events().list(
+        calendarId="primary",
+        timeMin=start.isoformat(),
+        timeMax=end.isoformat(),
+        singleEvents=True,
+        orderBy="startTime",
+    ).execute()
+
+    events = events_result.get("items", [])
+
+    total_seconds = 0
+    meetings_count = 0
+
+    for event in events:
+        # Ignora eventos all-day
+        if "dateTime" not in event.get("start", {}):
+            continue
+
+        organizer_email = (
+            event.get("organizer", {})
+            .get("email", "")
+            .lower()
+        )
+
+        # Se organizer estiver na whitelist → ignora
+        if organizer_email in whitelist:
+            continue
+
+        start_dt = datetime.fromisoformat(event["start"]["dateTime"])
+        end_dt = datetime.fromisoformat(event["end"]["dateTime"])
+
+        duration = (end_dt - start_dt).total_seconds()
+
+        total_seconds += duration
+        meetings_count += 1
+
+    hours = round(total_seconds / 3600, 2)
+
+    return hours, meetings_count
+
 def main():
     if len(sys.argv) != 2:
         logger.error("Uso: python kpis.py YYYY-MM-DD")
@@ -270,26 +348,22 @@ def main():
     end_ts = int(datetime.combine(sunday, datetime.max.time()).timestamp())
 
     logger.debug("Timestamps: %s até %s", start_ts, end_ts)
-    # ================= CLOUD =================
 
     utilization = get_datadog_utilization(start_ts, end_ts)
     aws_identity_cost = get_aws_month_cost("nexti-identity")
     aws_prod_cost = get_aws_month_cost("nexti-prod-terraform")
     sla = get_sla()
 
-    # ================= JIRA =================
-
     issues = get_jira_issues(monday, sunday)
     on_time_pct, dev_points, issue_details = compute_on_time_and_points(issues)
-
-    # ================= SECURITY =================
 
     sec_prod = get_security_score("nexti-prod-terraform")
     sec_qa = get_security_score("nexti-qa-terraform")
 
-    # Usando logger.info para o relatório final
-    logger.info("\n================= KPI SEMANAL =================")
-    logger.info("Período: %s até %s\n", monday, sunday)
+    meeting_hours, meeting_count = get_meeting_hours_not_organized_by(monday, sunday)
+
+    logger.info("================= KPI SEMANAL =================")
+    logger.info("Período: %s até %s", monday, sunday)
 
     logger.info("[CLOUD]")
     logger.info("- Taxa de utilização da plataforma: %.2f %%", utilization)
@@ -306,7 +380,7 @@ def main():
     logger.info("- On-Time Delivery:   %.2f %%", on_time_pct)
     logger.info("- Pontuação semanal:  %s pontos", dev_points)
 
-    logger.info("\nIssues consideradas:")
+    logger.info("Issues consideradas:")
 
     if not issue_details:
         logger.info("Nenhuma issue encontrada no período.")
@@ -322,7 +396,13 @@ def main():
                 i["points"]
             )
 
-    logger.info("\n==============================================")
+    logger.info("[AGENDA]")
+    logger.info("- Reuniões não organizadas por mim: %s", meeting_count)
+    logger.info("- Horas em reuniões (não organizadas por mim): %.2f h", meeting_hours)
+    logger.info("- Pontuação de reuniões: %.2f", (meeting_hours * 0.5))
+    logger.info("==============================================")
+    logger.info("- Pontuação de Entrega: %.2f", ((meeting_hours * 0.5) + dev_points))
+    logger.info("==============================================")
 
 
 if __name__ == "__main__":

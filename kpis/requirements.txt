@@ -1,3 +1,6 @@
 boto3
 datadog_api_client
+google-api-python-client
+google-auth
+google-auth-oauthlib
 jira
