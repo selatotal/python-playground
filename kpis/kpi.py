@@ -344,8 +344,8 @@ def main():
     logger.debug("Timestamps: %s até %s", start_ts, end_ts)
 
     utilization = get_datadog_utilization(start_ts, end_ts)
-    aws_identity_cost = get_aws_month_cost("nexti-identity")
-    aws_prod_cost = get_aws_month_cost("nexti-prod-terraform")
+    aws_identity_cost = get_aws_month_cost(os.environ["AWS_PAYER_PROFILE"])
+    aws_prod_cost = get_aws_month_cost(os.environ["AWS_PROD_PROFILE"])
     sla = get_sla()
 
     issues = get_jira_issues(monday, sunday)
