@@ -192,7 +192,7 @@ def get_jira_issues(start, end):
 
     jql = f"""
     assignee = "{os.environ['JIRA_EMAIL']}"
-    AND status = Done
+    AND status IN (Done, Arquivar)
     AND resolved >= "{start_str}"
     AND resolved <= "{end_str}"
     """
@@ -257,10 +257,6 @@ def compute_on_time_and_points(issues):
 
     return on_time_pct, points, issue_details
 
-# =========================
-# Google Calendar
-# =========================
-
 def get_google_calendar_service():
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
@@ -309,7 +305,6 @@ def get_meeting_hours_not_organized_by(start, end):
     meetings_count = 0
 
     for event in events:
-        # Ignora eventos all-day
         if "dateTime" not in event.get("start", {}):
             continue
 
@@ -319,7 +314,6 @@ def get_meeting_hours_not_organized_by(start, end):
             .lower()
         )
 
-        # Se organizer estiver na whitelist → ignora
         if organizer_email in whitelist:
             continue
 
@@ -398,7 +392,7 @@ def main():
 
     logger.info("[AGENDA]")
     logger.info("- Reuniões não organizadas por mim: %s", meeting_count)
-    logger.info("- Horas em reuniões (não organizadas por mim): %.2f h", meeting_hours)
+    logger.info("- Horas em reuniões de apoio técnico: %.2f h", meeting_hours)
     logger.info("- Pontuação de reuniões: %.2f", (meeting_hours * 0.5))
     logger.info("==============================================")
     logger.info("- Pontuação de Entrega: %.2f", ((meeting_hours * 0.5) + dev_points))
