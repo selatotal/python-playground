@@ -262,3 +262,7 @@ poetry.toml
 pyrightconfig.json
 *.csv
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm+all
+
+kpis/credentials.json
+kpis/token.json
+kpis/.idea
