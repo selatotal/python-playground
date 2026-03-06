@@ -12,8 +12,7 @@ from zoneinfo import ZoneInfo
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    format="%(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -192,7 +191,7 @@ def get_jira_issues(start, end):
 
     jql = f"""
     assignee = "{os.environ['JIRA_EMAIL']}"
-    AND status IN (Done, Arquivar)
+    AND (status = Done OR status = Arquivar OR status = Archived)
     AND resolved >= "{start_str}"
     AND resolved <= "{end_str}"
     """
@@ -376,7 +375,7 @@ def main():
 
     logger.info("Issues consideradas:")
 
-    if not issue_details:
+    if not issues:
         logger.info("Nenhuma issue encontrada no período.")
     else:
         for i in issue_details:
