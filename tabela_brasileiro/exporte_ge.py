@@ -2,9 +2,9 @@ import requests
 import csv
 from datetime import datetime
 
-BASE_URL = "https://api.globoesporte.globo.com/tabela/d1a37fa4-e948-43a6-ba53-ab24ab3a45b1/fase/fase-unica-campeonato-brasileiro-2026/rodada/{}/jogos/"
+BASE_URL = "https://api.globoesporte.globo.com/tabela/009b5a68-dd09-46b8-95b3-293a2d494366/fase/brasileiro-serie-b-2026-fase-unica/rodada/{}/jogos/"
 
-OUTPUT_FILE = "brasileirao_serie_a_2025.csv"
+OUTPUT_FILE = "brasileirao_serie_b_2025.csv"
 
 ultima_data = None
 
