@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: quay.io/tembo/pg16-pgmq:latest
+    container_name: pgqueue-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pgqueue
+    ports:
+      - "5432:5432"
+    volumes:
+      # Scripts em docker-entrypoint-initdb.d rodam automaticamente
+      # na PRIMEIRA subida do container (data dir vazio).
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - pgqueue-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pgqueue"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgqueue-data:
